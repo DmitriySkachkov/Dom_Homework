@@ -89,6 +89,8 @@
     const addButton = document.querySelector('.add-form-button');
     const commentsList = document.querySelector('.comments');
 
+    let replyingToCommentId = null;
+
     function getCurrentDateTime() {
       const now = new Date();
       const day = String(now.getDate()).padStart(2, '0');
@@ -100,6 +102,16 @@
       return `${day}.${month}.${year} ${hours}:${minutes}`;
     }
 
+    function escapeHtml(unsafe) {
+      if (!unsafe) return '';
+      return unsafe
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
     function renderComments() {
       let commentsHTML = '';
       
@@ -107,12 +119,12 @@
         commentsHTML += `
           <li class="comment" data-id="${comment.id}">
             <div class="comment-header">
-              <div>${comment.name}</div>
+              <div>${escapeHtml(comment.name)}</div>
               <div>${comment.date}</div>
             </div>
             <div class="comment-body">
               <div class="comment-text">
-                ${comment.text}
+                ${escapeHtml(comment.text)}
               </div>
             </div>
             <div class="comment-footer">
@@ -129,8 +141,18 @@
       
       document.querySelectorAll('.like-button').forEach((button) => {
         button.addEventListener('click', (event) => {
+          event.stopPropagation();
           const commentId = parseInt(event.target.dataset.id);
           toggleLike(commentId);
+        });
+      });
+      
+      document.querySelectorAll('.comment').forEach((commentElement) => {
+        commentElement.addEventListener('click', (event) => {
+          if (!event.target.closest('.like-button')) {
+            const commentId = parseInt(commentElement.dataset.id);
+            replyToComment(commentId);
+          }
         });
       });
     }
@@ -151,14 +173,31 @@
       }
     }
 
+    function replyToComment(commentId) {
+      const comment = comments.find(c => c.id === commentId);
+      
+      if (comment) {
+        replyingToCommentId = commentId;
+        
+        const replyText = `> ${comment.name}:\n> ${comment.text}\n\n`;
+        
+        nameInput.value = '';
+        textInput.value = replyText;
+        
+        textInput.focus();
+      }
+    }
+
     function addNewComment() {
-      const name = nameInput.value.trim();
-      const text = textInput.value.trim();
+      const name = escapeHtml(nameInput.value.trim());
+      let text = textInput.value.trim();
       
       if (!name || !text) {
         alert('Пожалуйста, заполните все поля');
         return;
       }
+      
+      text = escapeHtml(text);
       
       const newId = comments.length > 0 ? Math.max(...comments.map(c => c.id)) + 1 : 1;
       
@@ -175,6 +214,7 @@
       
       nameInput.value = '';
       textInput.value = '';
+      replyingToCommentId = null;
     }
 
     function initApp() {
