@@ -65,180 +65,220 @@
 
   <script>
 
-    let comments = [
-      {
-        id: 1,
-        name: "Глеб Фокин",
-        date: "12.02.22 12:18",
-        text: "Это будет первый комментарий на этой странице",
-        likes: 3,
-        isLiked: false
-      },
-      {
-        id: 2,
-        name: "Варвара Н.",
-        date: "13.02.22 19:22",
-        text: "Мне нравится как оформлена эта страница! ❤",
-        likes: 75,
-        isLiked: true
+const host = "https://wedev-api.sky.pro/api/v1/dmitriy-skachkov"
+
+const fetchComments = () => {
+  return fetch(host + "/comments").then(res => {
+    if (!res.ok) {
+      throw new Error('Ошибка загрузки комментариев');
+    }
+    return res.json()
+  })
+  .then((responseData) => {
+    const appComments = responseData.comments.map(comment => {
+      return {
+        id: comment.id,
+        name: comment.author.name,
+        date: new Date(comment.date),
+        text: comment.text,
+        likes: comment.likes,
+        isLiked: false,
       }
-    ];
+    })
+    return appComments
+  })
+}
 
-    const nameInput = document.querySelector('.add-form-name');
-    const textInput = document.querySelector('.add-form-text');
-    const addButton = document.querySelector('.add-form-button');
-    const commentsList = document.querySelector('.comments');
+fetchComments().then(data => {
+  updateComments(data);
+  renderComments()
+}).catch(error => {
+  console.error('Ошибка загрузки комментариев:', error);
+  alert('Не удалось загрузить комментарии');
+})
 
-    let replyingToCommentId = null;
+const updateComments = (newComments) => {
+  comments = newComments
+}
 
-    function getCurrentDateTime() {
-      const now = new Date();
-      const day = String(now.getDate()).padStart(2, '0');
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const year = String(now.getFullYear()).slice(-2);
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      
-      return `${day}.${month}.${year} ${hours}:${minutes}`;
-    }
+let comments = [];
 
-    function escapeHtml(unsafe) {
-      if (!unsafe) return '';
-      return unsafe
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
-    }
-
-    function renderComments() {
-      let commentsHTML = '';
-      
-      comments.forEach((comment) => {
-        commentsHTML += `
-          <li class="comment" data-id="${comment.id}">
-            <div class="comment-header">
-              <div>${escapeHtml(comment.name)}</div>
-              <div>${comment.date}</div>
-            </div>
-            <div class="comment-body">
-              <div class="comment-text">
-                ${escapeHtml(comment.text)}
-              </div>
-            </div>
-            <div class="comment-footer">
-              <div class="likes">
-                <span class="likes-counter">${comment.likes}</span>
-                <button class="like-button ${comment.isLiked ? '-active-like' : ''}" data-id="${comment.id}"></button>
-              </div>
-            </div>
-          </li>
-        `;
-      });
-      
-      commentsList.innerHTML = commentsHTML;
-      
-      document.querySelectorAll('.like-button').forEach((button) => {
-        button.addEventListener('click', (event) => {
-          event.stopPropagation();
-          const commentId = parseInt(event.target.dataset.id);
-          toggleLike(commentId);
-        });
-      });
-      
-      document.querySelectorAll('.comment').forEach((commentElement) => {
-        commentElement.addEventListener('click', (event) => {
-          if (!event.target.closest('.like-button')) {
-            const commentId = parseInt(commentElement.dataset.id);
-            replyToComment(commentId);
-          }
-        });
+const postComment = (name, text) => {
+  return fetch(host + "/comments", {
+    method: "POST",
+    body: JSON.stringify({
+      text: text,
+      name: name,
+    }),
+  })
+  .then((response) => {
+    if (!response.ok) {
+      return response.text().then(text => {
+        throw new Error(`Ошибка сервера: ${response.status} ${text}`);
       });
     }
+    return response.json();
+  })
+}
 
-    function toggleLike(commentId) {
-      const comment = comments.find(c => c.id === commentId);
-      
-      if (comment) {
-        if (comment.isLiked) {
-          comment.likes--;
-          comment.isLiked = false;
-        } else {
-          comment.likes++;
-          comment.isLiked = true;
-        }
-        
-        renderComments();
+const nameInput = document.querySelector('.add-form-name');
+const textInput = document.querySelector('.add-form-text');
+const addButton = document.querySelector('.add-form-button');
+const commentsList = document.querySelector('.comments');
+
+let replyingToCommentId = null;
+
+function escapeHtml(unsafe) {
+  if (!unsafe) return '';
+  return unsafe
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function renderComments() {
+  let commentsHTML = '';
+  
+  comments.forEach((comment) => {
+    const formattedDate = comment.date instanceof Date 
+      ? comment.date.toLocaleDateString('ru-RU', {
+          day: '2-digit',
+          month: '2-digit',
+          year: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      : comment.date;
+    
+    commentsHTML += `
+      <li class="comment" data-id="${comment.id}">
+        <div class="comment-header">
+          <div>${escapeHtml(comment.name)}</div>
+          <div>${formattedDate}</div>
+        </div>
+        <div class="comment-body">
+          <div class="comment-text">
+            ${escapeHtml(comment.text)}
+          </div>
+        </div>
+        <div class="comment-footer">
+          <div class="likes">
+            <span class="likes-counter">${comment.likes}</span>
+            <button class="like-button ${comment.isLiked ? '-active-like' : ''}" data-id="${comment.id}"></button>
+          </div>
+        </div>
+      </li>
+    `;
+  });
+  
+  commentsList.innerHTML = commentsHTML;
+  
+  document.querySelectorAll('.like-button').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const commentId = parseInt(event.target.dataset.id);
+      toggleLike(commentId);
+    });
+  });
+  
+  document.querySelectorAll('.comment').forEach((commentElement) => {
+    commentElement.addEventListener('click', (event) => {
+      if (!event.target.closest('.like-button')) {
+        const commentId = parseInt(commentElement.dataset.id);
+        replyToComment(commentId);
       }
-    }
+    });
+  });
+}
 
-    function replyToComment(commentId) {
-      const comment = comments.find(c => c.id === commentId);
-      
-      if (comment) {
-        replyingToCommentId = commentId;
-        
-        const replyText = `> ${comment.name}:\n> ${comment.text}\n\n`;
-        
-        nameInput.value = '';
-        textInput.value = replyText;
-        
-        textInput.focus();
-      }
+function toggleLike(commentId) {
+  const comment = comments.find(c => c.id === commentId);
+  
+  if (comment) {
+    if (comment.isLiked) {
+      comment.likes--;
+      comment.isLiked = false;
+    } else {
+      comment.likes++;
+      comment.isLiked = true;
     }
+    
+    renderComments();
+  }
+}
 
-    function addNewComment() {
-      const name = escapeHtml(nameInput.value.trim());
-      let text = textInput.value.trim();
-      
-      if (!name || !text) {
-        alert('Пожалуйста, заполните все поля');
-        return;
-      }
-      
-      text = escapeHtml(text);
-      
-      const newId = comments.length > 0 ? Math.max(...comments.map(c => c.id)) + 1 : 1;
-      
-      comments.push({
-        id: newId,
-        name: name,
-        date: getCurrentDateTime(),
-        text: text,
-        likes: 0,
-        isLiked: false
-      });
-      
-      renderComments();
-      
-      nameInput.value = '';
-      textInput.value = '';
-      replyingToCommentId = null;
+function replyToComment(commentId) {
+  const comment = comments.find(c => c.id === commentId);
+  
+  if (comment) {
+    replyingToCommentId = commentId;
+    
+    const replyText = `> ${comment.name}:\n> ${comment.text}\n\n`;
+    
+    nameInput.value = comment.name;
+    textInput.value = replyText;
+    
+    textInput.focus();
+  }
+}
+
+async function addNewComment() {
+  const name = nameInput.value.trim();
+  let text = textInput.value.trim();
+  
+  if (!name || !text) {
+    alert('Пожалуйста, заполните все поля');
+    return;
+  }
+  
+  const originalText = addButton.textContent;
+  addButton.disabled = true;
+  addButton.textContent = 'Добавляем...';
+  
+  try {
+    await postComment(name, text);
+    
+    const updatedComments = await fetchComments();
+    updateComments(updatedComments);
+    renderComments();
+    
+    nameInput.value = '';
+    textInput.value = '';
+    replyingToCommentId = null;
+    
+  } catch (error) {
+    console.error('Ошибка при добавлении комментария:', error);
+    alert(`Не удалось отправить комментарий: ${error.message}`);
+  } finally {
+    addButton.disabled = false;
+    addButton.textContent = originalText;
+  }
+}
+
+function initApp() {
+  renderComments();
+  
+  addButton.addEventListener('click', addNewComment);
+  
+  nameInput.addEventListener('input', function() {
+    console.log('Имя изменено:', this.value);
+  });
+  
+  textInput.addEventListener('input', function() {
+    console.log('Комментарий изменен:', this.value);
+  });
+  
+  textInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && e.ctrlKey) {
+      e.preventDefault();
+      addNewComment();
     }
+  });
+}
 
-    function initApp() {
-      renderComments();
-      
-      addButton.addEventListener('click', addNewComment);
-      
-      nameInput.addEventListener('input', function() {
-        console.log('Имя изменено:', this.value);
-      });
-      
-      textInput.addEventListener('input', function() {
-        console.log('Комментарий изменен:', this.value);
-      });
-      
-      textInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          addNewComment();
-        }
-      });
-    }
-
-    document.addEventListener('DOMContentLoaded', initApp);
+document.addEventListener('DOMContentLoaded', initApp);
 
   </script>
 </html>
