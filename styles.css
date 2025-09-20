@@ -42,6 +42,7 @@ body {
 
   .comment {
     padding: 48px;
+    margin: 24px;
   }
 
   .comment-header {
@@ -135,3 +136,39 @@ body {
   .add-form-button:hover {
     opacity: 0.9;
   }
+
+  @keyframes rotating {
+        from {
+          transform: rotate(0deg);
+        }
+        25% {
+          transform: rotate(30deg);
+        }
+        75% {
+          transform: rotate(-30deg);
+        }
+        to {
+          transform: rotate(0deg);
+        }
+      }
+
+      .-loading-like {
+        animation: rotating 2s linear infinite;
+      }
+
+      .loading {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+        font-size: 18px;
+      }
+
+      .add-form-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .comments-container {
+        position: relative;
+        min-height: 200px;
+      }
