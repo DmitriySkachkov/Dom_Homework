@@ -1,7 +1,8 @@
-import { loadComments, postComment } from './api.js';
+import { loadComments, postComment, loginUser, registerUser } from './api.js';
 import { comments, updateComments, setReplyingToCommentId, setCurrentFormData, resetFormData } from './comments.js';
 import { renderComments } from './render.js';
 import { delay } from './utils.js';
+import { login, logout, isLoggedIn, getCurrentUser, initAuth } from './auth.js';
 
 const nameInput = document.querySelector('.add-form-name');
 const textInput = document.querySelector('.add-form-text');
@@ -10,6 +11,14 @@ const commentsList = document.querySelector('.comments');
 const loadingElement = document.getElementById('loading');
 const errorMessageElement = document.getElementById('error-message');
 const retryButton = document.getElementById('retry-button');
+
+const loginButton = document.getElementById('login-button');
+const logoutButton = document.getElementById('logout-button');
+const registerButton = document.getElementById('register-button');
+const loginModal = document.getElementById('login-modal');
+const registerModal = document.getElementById('register-modal');
+const loginForm = document.getElementById('login-form');
+const registerForm = document.getElementById('register-form');
 
 export function toggleLike(commentId) {
   const comment = comments.find(c => c.id === commentId);
@@ -37,6 +46,11 @@ export function toggleLike(commentId) {
 }
 
 export function replyToComment(commentId) {
+  if (!isLoggedIn()) {
+    showLoginModal();
+    return;
+  }
+
   const comment = comments.find(c => c.id === commentId);
   
   if (comment) {
@@ -44,23 +58,21 @@ export function replyToComment(commentId) {
     
     const replyText = `> ${comment.name}:\n> ${comment.text}\n\n`;
     
-    nameInput.value = comment.name;
     textInput.value = replyText;
     
-    setCurrentFormData({ name: comment.name, text: replyText });
+    setCurrentFormData({ text: replyText });
     
     textInput.focus();
   }
 }
 
 function addNewComment() {
-  const name = nameInput.value.trim();
-  let text = textInput.value.trim();
-  
-  if (name.length < 3) {
-    alert('Имя должно содержать не менее 3 символов');
+  if (!isLoggedIn()) {
+    showLoginModal();
     return;
   }
+
+  let text = textInput.value.trim();
   
   if (text.length < 5) {
     alert('Комментарий должен содержать не менее 5 символов');
@@ -71,9 +83,9 @@ function addNewComment() {
   addButton.disabled = true;
   addButton.textContent = 'Добавляем...';
   
-  setCurrentFormData({ name, text });
+  setCurrentFormData({ text });
   
-  postComment(name, text)
+  postComment(text)
     .then(() => {
       return loadComments();
     })
@@ -81,14 +93,12 @@ function addNewComment() {
       updateComments(updatedComments);
       renderComments();
       
-      nameInput.value = '';
       textInput.value = '';
       resetFormData();
     })
     .catch((error) => {
       console.error('Ошибка при добавлении комментария:', error);
       
-      nameInput.value = currentFormData.name;
       textInput.value = currentFormData.text;
       
       if (error.message === 'NETWORK_ERROR') {
@@ -98,6 +108,9 @@ function addNewComment() {
         alert(`Ошибка валидации: ${errorMsg}`);
       } else if (error.message === 'SERVER_ERROR') {
         alert('Ошибка сервера. Пожалуйста, попробуйте позже.');
+      } else if (error.message.startsWith('AUTH_ERROR:')) {
+        alert('Ошибка авторизации. Пожалуйста, войдите снова.');
+        logout();
       } else {
         alert(`Не удалось отправить комментарий: ${error.message}`);
       }
@@ -108,16 +121,81 @@ function addNewComment() {
     });
 }
 
+function showLoginModal() {
+  loginModal.style.display = 'block';
+}
+
+function showRegisterModal() {
+  registerModal.style.display = 'block';
+}
+
+function hideModals() {
+  loginModal.style.display = 'none';
+  registerModal.style.display = 'none';
+}
+
+function handleLogin(event) {
+  event.preventDefault();
+  
+  const loginError = document.getElementById('login-error');
+  const username = document.getElementById('login-username').value;
+  const password = document.getElementById('login-password').value;
+  
+  loginError.style.display = 'none';
+  
+  loginUser(username, password)
+    .then((userData) => {
+      login(userData);
+      hideModals();
+      loginForm.reset();
+      
+      return loadComments();
+    })
+    .then((commentsData) => {
+      updateComments(commentsData);
+      renderComments();
+    })
+    .catch((error) => {
+      loginError.textContent = error.message;
+      loginError.style.display = 'block';
+    });
+}
+
+function handleRegister(event) {
+  event.preventDefault();
+  
+  const registerError = document.getElementById('register-error');
+  const name = document.getElementById('register-name').value;
+  const username = document.getElementById('register-username').value;
+  const password = document.getElementById('register-password').value;
+  
+  registerError.style.display = 'none';
+  
+  registerUser(name, username, password)
+    .then((userData) => {
+      login(userData);
+      hideModals();
+      registerForm.reset();
+      alert('Регистрация прошла успешно!');
+      
+      return loadComments();
+    })
+    .then((commentsData) => {
+      updateComments(commentsData);
+      renderComments();
+    })
+    .catch((error) => {
+      registerError.textContent = error.message;
+      registerError.style.display = 'block';
+    });
+}
+
 function setupEventListeners() {
   retryButton.addEventListener('click', handleRetry);
   addButton.addEventListener('click', addNewComment);
   
-  nameInput.addEventListener('input', function() {
-    setCurrentFormData({ ...currentFormData, name: this.value });
-  });
-  
   textInput.addEventListener('input', function() {
-    setCurrentFormData({ ...currentFormData, text: this.value });
+    setCurrentFormData({ text: this.value });
   });
   
   textInput.addEventListener('keydown', function(e) {
@@ -126,6 +204,26 @@ function setupEventListeners() {
       addNewComment();
     }
   });
+  
+  loginButton.addEventListener('click', showLoginModal);
+  logoutButton.addEventListener('click', logout);
+  registerButton.addEventListener('click', showRegisterModal);
+  
+  document.querySelectorAll('.close').forEach(closeBtn => {
+    closeBtn.addEventListener('click', hideModals);
+  });
+  
+  window.addEventListener('click', (event) => {
+    if (event.target === loginModal) {
+      hideModals();
+    }
+    if (event.target === registerModal) {
+      hideModals();
+    }
+  });
+  
+  loginForm.addEventListener('submit', handleLogin);
+  registerForm.addEventListener('submit', handleRegister);
 }
 
 function handleRetry() {
@@ -154,6 +252,8 @@ function handleRetry() {
 }
 
 export function initApp() {
+  initAuth();
+  
   loadingElement.style.display = 'block';
   commentsList.style.display = 'none';
   errorMessageElement.style.display = 'none';
