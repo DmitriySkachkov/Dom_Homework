@@ -1,6 +1,6 @@
 export let comments = [];
 export let replyingToCommentId = null;
-export let currentFormData = { name: '', text: '' };
+export let currentFormData = { text: '' };
 
 export function updateComments(newComments) {
   comments = newComments;
@@ -15,6 +15,6 @@ export function setCurrentFormData(data) {
 }
 
 export function resetFormData() {
-  currentFormData = { name: '', text: '' };
+  currentFormData = { text: '' };
   replyingToCommentId = null;
 }

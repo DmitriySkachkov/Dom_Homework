@@ -7,14 +7,7 @@
   </head>
 
   <body>
-    <div class="auth-panel">
-      <div id="user-info" class="user-info" style="display: none;"></div>
-      <button id="login-button" class="auth-button">Войти</button>
-      <button id="register-button" class="auth-button">Зарегистрироваться</button>
-      <button id="logout-button" class="auth-button" style="display: none;">Выйти</button>
-    </div>
-    
-    <div class="container">
+     <div class="container">
       <div class="comments-container">
         <div id="loading" class="loading">Загрузка комментариев...</div>
         <ul class="comments" style="display: none;">
@@ -24,13 +17,11 @@
           <button id="retry-button">Попробовать снова</button>
         </div>
       </div>
-      
-      <div class="add-form" style="display: none;">
+      <div class="add-form">
         <input
           type="text"
           class="add-form-name"
           placeholder="Введите ваше имя"
-          disabled
         />
         <textarea
           type="textarea"
@@ -43,34 +34,6 @@
         </div>
       </div>
     </div>
-
-    <div id="login-modal" class="modal" style="display: none;">
-      <div class="modal-content">
-        <span class="close">&times;</span>
-        <h2>Вход</h2>
-        <form id="login-form">
-          <input type="text" id="login-username" placeholder="Логин" required>
-          <input type="password" id="login-password" placeholder="Пароль" required>
-          <button type="submit">Войти</button>
-        </form>
-        <div id="login-error" class="error-message" style="display: none;"></div>
-      </div>
-    </div>
-
-    <div id="register-modal" class="modal" style="display: none;">
-      <div class="modal-content">
-        <span class="close">&times;</span>
-        <h2>Регистрация</h2>
-        <form id="register-form">
-          <input type="text" id="register-name" placeholder="Имя" required>
-          <input type="text" id="register-username" placeholder="Логин" required>
-          <input type="password" id="register-password" placeholder="Пароль" required>
-          <button type="submit">Зарегистрироваться</button>
-        </form>
-        <div id="register-error" class="error-message" style="display: none;"></div>
-      </div>
-    </div>
-
     <script type="module" src="main.js"></script>
   </body>
 </html>

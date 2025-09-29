@@ -1,45 +1,7 @@
 import { delay } from './utils.js';
-import { getCurrentUser } from './auth.js';
+import { getUserToken } from './auth.js';
 
 const host = "https://wedev-api.sky.pro/api/v2/dmitriy-skachkov";
-const userHost = " https://wedev-api.sky.pro/api/user";
-
-export function loginUser(login, password) {
-  return fetch(userHost + "/login", {
-    method: "POST",
-    body: JSON.stringify({
-      login,
-      password,
-    }),
-  })
-    .then((response) => {
-      if (!response.ok) {
-        return response.json().then(errorData => {
-          throw new Error(errorData.error || 'Ошибка авторизации');
-        });
-      }
-      return response.json();
-    });
-}
-
-export function registerUser(name, login, password) {
-  return fetch(userHost, {
-    method: "POST",
-    body: JSON.stringify({
-      name,
-      login,
-      password,
-    }),
-  })
-    .then((response) => {
-      if (!response.ok) {
-        return response.json().then(errorData => {
-          throw new Error(errorData.error || 'Ошибка регистрации');
-        });
-      }
-      return response.json();
-    });
-}
 
 export function loadComments() {
   return fetch(host + "/comments")
@@ -74,9 +36,10 @@ export function loadComments() {
 }
 
 export const postComment = (text, forceError = false, retryCount = 0) => {
-  const user = getCurrentUser();
-  if (!user) {
-    throw new Error('Пользователь не авторизован');
+  const token = getUserToken();
+  
+  if (!token) {
+    return Promise.reject(new Error('Пользователь не авторизован'));
   }
 
   const bodyData = forceError 
@@ -91,7 +54,8 @@ export const postComment = (text, forceError = false, retryCount = 0) => {
   return fetch(host + "/comments", {
     method: "POST",
     headers: {
-      'Authorization': `Bearer ${user.token}`
+      'Authorization': `Bearer ${token}`,
+      // Убираем Content-Type для этого API, так как он его не принимает
     },
     body: bodyData,
   })
@@ -102,7 +66,7 @@ export const postComment = (text, forceError = false, retryCount = 0) => {
             throw new Error(`VALIDATION_ERROR:${errorData.error || 'Неверные данные'}`);
           });
         } else if (response.status === 401) {
-          throw new Error('AUTH_ERROR:Неверный токен авторизации');
+          throw new Error('AUTH_ERROR');
         } else if (response.status >= 500) {
           if (retryCount < 3) {
             return delay(1000 * (retryCount + 1)).then(() => {
